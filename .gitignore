@@ -1,5 +1,6 @@
 # Ignore the Claude Code ZAI environment script
 claude_code_zai_env.sh
+xvs.md
 
 # Dependencies
 node_modules/
@@ -10,6 +11,7 @@ pnpm-debug.log*
 
 # Environment variables
 .env
+.env.example
 .env.local
 .env.development.local
 .env.test.local
