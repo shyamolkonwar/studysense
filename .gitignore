@@ -9,6 +9,36 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
 # Environment variables
 .env
 .env.example
@@ -28,6 +58,19 @@ build/
 *.swp
 *.swo
 *~
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
 
 # OS generated files
 .DS_Store
@@ -47,6 +90,11 @@ pids/
 *.pid
 *.seed
 *.pid.lock
+
+# Database
+*.sqlite3
+*.db
+*.sqlite
 
 # Coverage directory used by tools like istanbul
 coverage/
