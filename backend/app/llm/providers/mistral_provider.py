@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional, AsyncGenerator
-import openai
+import httpx
 import logging
 import json
 import asyncio
@@ -28,10 +28,6 @@ class MistralProvider:
             "mixtral-8x7b-instruct"
         ]
 
-        # Configure OpenAI client for Mistral
-        openai.api_key = api_key
-        openai.api_base = self.base_url
-
         logger.info("Mistral AI provider initialized")
 
     def get_default_model(self) -> str:
@@ -54,13 +50,13 @@ class MistralProvider:
             LLMResponse with generated content
         """
         try:
-            # Convert messages to OpenAI format
-            openai_messages = self._convert_messages(messages)
+            # Convert messages to Mistral format
+            mistral_messages = self._convert_messages(messages)
 
             # Prepare request parameters
             request_params = {
                 "model": config.model,
-                "messages": openai_messages,
+                "messages": mistral_messages,
                 "temperature": config.temperature,
                 "stream": False
             }
@@ -70,22 +66,26 @@ class MistralProvider:
                 request_params["max_tokens"] = config.max_tokens
             if config.top_p:
                 request_params["top_p"] = config.top_p
-            if config.frequency_penalty:
-                request_params["frequency_penalty"] = config.frequency_penalty
-            if config.presence_penalty:
-                request_params["presence_penalty"] = config.presence_penalty
 
-            # Add tools if provided
-            if config.tools:
-                request_params["tools"] = config.tools
-                if config.tool_choice:
-                    request_params["tool_choice"] = config.tool_choice
+            # Make API call using httpx
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json=request_params,
+                    timeout=60.0
+                )
 
-            # Make API call
-            response = await openai.ChatCompletion.acreate(**request_params)
+                if response.status_code != 200:
+                    raise Exception(f"Mistral API error: {response.status_code} - {response.text}")
+
+                response_data = response.json()
 
             # Convert response
-            return self._convert_response(response, config)
+            return self._convert_response(response_data, config)
 
         except Exception as e:
             logger.error(f"Mistral AI API error: {str(e)}")
@@ -108,12 +108,12 @@ class MistralProvider:
         """
         try:
             # Convert messages
-            openai_messages = self._convert_messages(messages)
+            mistral_messages = self._convert_messages(messages)
 
             # Prepare request parameters
             request_params = {
                 "model": config.model,
-                "messages": openai_messages,
+                "messages": mistral_messages,
                 "temperature": config.temperature,
                 "stream": True
             }
@@ -121,17 +121,31 @@ class MistralProvider:
             # Add optional parameters
             if config.max_tokens:
                 request_params["max_tokens"] = config.max_tokens
-            if config.tools:
-                request_params["tools"] = config.tools
 
-            # Make streaming API call
-            response = await openai.ChatCompletion.acreate(**request_params)
+            # Make streaming API call using httpx
+            async with httpx.AsyncClient() as client:
+                async with client.stream(
+                    "POST",
+                    f"{self.base_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json=request_params,
+                    timeout=60.0
+                ) as response:
+                    if response.status_code != 200:
+                        raise Exception(f"Mistral API error: {response.status_code}")
 
-            async for chunk in response:
-                if chunk.choices:
-                    delta = chunk.choices[0].delta
-                    if hasattr(delta, 'content') and delta.content:
-                        yield delta.content
+                    async for line in response.aiter_lines():
+                        if line.strip():
+                            if line.startswith("data: "):
+                                try:
+                                    data = json.loads(line[6:])  # Remove "data: " prefix
+                                    if data.get("choices") and data["choices"][0].get("delta", {}).get("content"):
+                                        yield data["choices"][0]["delta"]["content"]
+                                except json.JSONDecodeError:
+                                    continue
 
         except Exception as e:
             logger.error(f"Mistral AI streaming error: {str(e)}")
@@ -177,37 +191,38 @@ class MistralProvider:
             }
         }
 
-    def _convert_response(self, response: Any, config: LLMConfig) -> LLMResponse:
+    def _convert_response(self, response_data: Dict[str, Any], config: LLMConfig) -> LLMResponse:
         """Convert Mistral AI response to LLMResponse format"""
         try:
-            choice = response.choices[0]
-            message = choice.message
+            choice = response_data["choices"][0]
+            message = choice["message"]
 
             # Extract content
-            content = message.content if hasattr(message, 'content') and message.content else ""
+            content = message.get("content", "")
 
             # Extract tool calls
             tool_calls = None
-            if hasattr(message, 'tool_calls') and message.tool_calls:
+            if "tool_calls" in message and message["tool_calls"]:
                 tool_calls = [
                     {
-                        "id": tc.id,
-                        "type": tc.type,
+                        "id": tc["id"],
+                        "type": tc["type"],
                         "function": {
-                            "name": tc.function.name,
-                            "arguments": tc.function.arguments
+                            "name": tc["function"]["name"],
+                            "arguments": tc["function"]["arguments"]
                         }
                     }
-                    for tc in message.tool_calls
+                    for tc in message["tool_calls"]
                 ]
 
             # Extract usage information
             usage = None
-            if hasattr(response, 'usage') and response.usage:
+            if "usage" in response_data:
+                usage_data = response_data["usage"]
                 usage = {
-                    "prompt_tokens": response.usage.prompt_tokens,
-                    "completion_tokens": response.usage.completion_tokens,
-                    "total_tokens": response.usage.total_tokens
+                    "prompt_tokens": usage_data.get("prompt_tokens", 0),
+                    "completion_tokens": usage_data.get("completion_tokens", 0),
+                    "total_tokens": usage_data.get("total_tokens", 0)
                 }
 
             # Create response
@@ -219,8 +234,8 @@ class MistralProvider:
                 model=config.model,
                 provider="mistral",
                 metadata={
-                    "finish_reason": choice.finish_reason,
-                    "created": response.created
+                    "finish_reason": choice.get("finish_reason"),
+                    "created": response_data.get("created")
                 }
             )
 
@@ -238,8 +253,22 @@ class MistralProvider:
     async def list_models(self) -> List[str]:
         """List available models"""
         try:
-            models = await openai.Model.alist()
-            return [model.id for model in models.data if any(mistral_model in model.id for mistral_model in ["mistral", "mixtral"])]
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{self.base_url}/models",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    timeout=30.0
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    return [model["id"] for model in data.get("data", []) if any(mistral_model in model["id"] for mistral_model in ["mistral", "mixtral"])]
+                else:
+                    logger.warning(f"Failed to fetch models: {response.status_code}")
+                    return self.default_models
         except Exception as e:
             logger.error(f"Error listing Mistral AI models: {e}")
             return self.default_models
