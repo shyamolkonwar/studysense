@@ -237,6 +237,86 @@ class OpenAIProvider:
             logger.error(f"Error listing OpenAI models: {e}")
             return self.default_models
 
+    async def embed(
+        self,
+        texts: List[str],
+        config: LLMConfig
+    ) -> List[List[float]]:
+        """
+        Generate embeddings using OpenAI API
+
+        Args:
+            texts: List of texts to embed
+            config: Configuration for embedding
+
+        Returns:
+            List of embedding vectors
+        """
+        try:
+            # Use text-embedding-3-small for efficiency
+            embedding_model = "text-embedding-3-small"
+
+            # Prepare batches (OpenAI has limits)
+            batch_size = 100
+            all_embeddings = []
+
+            for i in range(0, len(texts), batch_size):
+                batch_texts = texts[i:i + batch_size]
+
+                # Make API call
+                response = await openai.Embedding.acreate(
+                    input=batch_texts,
+                    model=embedding_model
+                )
+
+                # Extract embeddings
+                batch_embeddings = [data.embedding for data in response.data]
+                all_embeddings.extend(batch_embeddings)
+
+            return all_embeddings
+
+        except Exception as e:
+            logger.error(f"OpenAI embedding error: {str(e)}")
+            raise
+
+    async def moderate(
+        self,
+        content: str,
+        config: LLMConfig
+    ) -> Dict[str, Any]:
+        """
+        Moderate content using OpenAI Moderation API
+
+        Args:
+            content: Content to moderate
+            config: Configuration (unused for moderation)
+
+        Returns:
+            Moderation results
+        """
+        try:
+            # Use OpenAI moderation API
+            response = await openai.Moderation.acreate(
+                input=content
+            )
+
+            result = response.results[0]
+
+            # Map to our format
+            moderation_result = {
+                "safe": not result.flagged,
+                "categories": result.categories.__dict__,
+                "category_scores": result.category_scores.__dict__,
+                "flagged": result.flagged,
+                "moderation_type": "openai_api"
+            }
+
+            return moderation_result
+
+        except Exception as e:
+            logger.error(f"OpenAI moderation error: {str(e)}")
+            raise
+
     def validate_config(self, config: LLMConfig) -> bool:
         """Validate configuration for this provider"""
         if config.model not in self.default_models:

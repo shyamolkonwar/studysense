@@ -310,6 +310,308 @@ class StudyResourcesTool(BaseTool):
             }
         }
 
+class MessagingFetchTool(BaseTool):
+    """Tool for fetching recent messaging data"""
+
+    def __init__(self):
+        super().__init__(
+            name="messaging_fetch",
+            description="Fetch recent messaging data for analysis"
+        )
+
+    async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
+        """Execute messaging data retrieval"""
+        try:
+            user_id = parameters.get("user_id")
+            hours_back = parameters.get("hours_back", 24)
+            platform = parameters.get("platform", "all")
+
+            if not user_id:
+                return ToolResult(
+                    success=False,
+                    data=None,
+                    error="user_id parameter is required"
+                )
+
+            # Mock implementation - in real system would integrate with messaging platforms
+            mock_messages = [
+                {
+                    "platform": "slack",
+                    "content": "I'm feeling really stressed about finals",
+                    "timestamp": "2025-01-18T14:30:00Z",
+                    "sentiment": "negative"
+                },
+                {
+                    "platform": "discord",
+                    "content": "Can't sleep, too worried about grades",
+                    "timestamp": "2025-01-18T02:15:00Z",
+                    "sentiment": "negative"
+                }
+            ]
+
+            return ToolResult(
+                success=True,
+                data={
+                    "user_id": user_id,
+                    "messages": mock_messages,
+                    "timeframe": f"Last {hours_back} hours",
+                    "platform": platform,
+                    "total_messages": len(mock_messages)
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Messaging fetch error: {e}")
+            return ToolResult(
+                success=False,
+                data=None,
+                error=str(e)
+            )
+
+    def get_schema(self) -> Dict[str, Any]:
+        """Get tool parameter schema"""
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                            "type": "string",
+                            "description": "User ID to fetch messages for"
+                        },
+                        "hours_back": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 168,  # 1 week
+                            "default": 24,
+                            "description": "Hours of message history to fetch"
+                        },
+                        "platform": {
+                            "type": "string",
+                            "enum": ["all", "slack", "discord", "teams", "whatsapp"],
+                            "default": "all",
+                            "description": "Platform to fetch from"
+                        }
+                    },
+                    "required": ["user_id"]
+                }
+            }
+        }
+
+class LMSDdeadlinesTool(BaseTool):
+    """Tool for fetching LMS deadlines and assignments"""
+
+    def __init__(self):
+        super().__init__(
+            name="lms_deadlines",
+            description="Fetch upcoming deadlines and assignments from LMS"
+        )
+
+    async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
+        """Execute LMS deadlines retrieval"""
+        try:
+            user_id = parameters.get("user_id")
+            days_ahead = parameters.get("days_ahead", 7)
+            include_completed = parameters.get("include_completed", False)
+
+            if not user_id:
+                return ToolResult(
+                    success=False,
+                    data=None,
+                    error="user_id parameter is required"
+                )
+
+            # Mock implementation - in real system would integrate with Canvas/Moodle APIs
+            mock_deadlines = [
+                {
+                    "title": "Psychology Research Paper",
+                    "due_date": "2025-01-25T23:59:00Z",
+                    "course": "PSYC 101",
+                    "type": "assignment",
+                    "stress_impact": "high",
+                    "completed": False
+                },
+                {
+                    "title": "Math Quiz 3",
+                    "due_date": "2025-01-23T10:00:00Z",
+                    "course": "MATH 201",
+                    "type": "quiz",
+                    "stress_impact": "medium",
+                    "completed": False
+                },
+                {
+                    "title": "Computer Science Final Project",
+                    "due_date": "2025-01-30T23:59:00Z",
+                    "course": "CS 301",
+                    "type": "project",
+                    "stress_impact": "high",
+                    "completed": False
+                }
+            ]
+
+            # Filter by completion status if requested
+            if not include_completed:
+                mock_deadlines = [d for d in mock_deadlines if not d["completed"]]
+
+            return ToolResult(
+                success=True,
+                data={
+                    "user_id": user_id,
+                    "deadlines": mock_deadlines,
+                    "days_ahead": days_ahead,
+                    "total_deadlines": len(mock_deadlines),
+                    "include_completed": include_completed
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"LMS deadlines error: {e}")
+            return ToolResult(
+                success=False,
+                data=None,
+                error=str(e)
+            )
+
+    def get_schema(self) -> Dict[str, Any]:
+        """Get tool parameter schema"""
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                            "type": "string",
+                            "description": "User ID to fetch deadlines for"
+                        },
+                        "days_ahead": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 30,
+                            "default": 7,
+                            "description": "Days ahead to look for deadlines"
+                        },
+                        "include_completed": {
+                            "type": "boolean",
+                            "default": False,
+                            "description": "Include completed assignments"
+                        }
+                    },
+                    "required": ["user_id"]
+                }
+            }
+        }
+
+class NotificationsTool(BaseTool):
+    """Tool for sending notifications and alerts"""
+
+    def __init__(self):
+        super().__init__(
+            name="send_notification",
+            description="Send notifications and alerts to users"
+        )
+
+    async def execute(self, parameters: Dict[str, Any]) -> ToolResult:
+        """Execute notification sending"""
+        try:
+            user_id = parameters.get("user_id")
+            notification_type = parameters.get("notification_type", "alert")
+            message = parameters.get("message", "")
+            priority = parameters.get("priority", "normal")
+            channels = parameters.get("channels", ["in_app"])
+
+            if not user_id:
+                return ToolResult(
+                    success=False,
+                    data=None,
+                    error="user_id parameter is required"
+                )
+
+            if not message:
+                return ToolResult(
+                    success=False,
+                    data=None,
+                    error="message parameter is required"
+                )
+
+            # Mock implementation - in real system would send actual notifications
+            notification_record = {
+                "user_id": user_id,
+                "type": notification_type,
+                "message": message,
+                "priority": priority,
+                "channels": channels,
+                "timestamp": "2025-01-18T15:00:00Z",
+                "status": "sent"
+            }
+
+            return ToolResult(
+                success=True,
+                data={
+                    "notification": notification_record,
+                    "channels_attempted": channels,
+                    "estimated_delivery": "immediate"
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"Notification error: {e}")
+            return ToolResult(
+                success=False,
+                data=None,
+                error=str(e)
+            )
+
+    def get_schema(self) -> Dict[str, Any]:
+        """Get tool parameter schema"""
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "user_id": {
+                            "type": "string",
+                            "description": "User ID to send notification to"
+                        },
+                        "notification_type": {
+                            "type": "string",
+                            "enum": ["alert", "reminder", "support", "crisis"],
+                            "default": "alert",
+                            "description": "Type of notification"
+                        },
+                        "message": {
+                            "type": "string",
+                            "description": "Notification message content"
+                        },
+                        "priority": {
+                            "type": "string",
+                            "enum": ["low", "normal", "high", "urgent"],
+                            "default": "normal",
+                            "description": "Notification priority level"
+                        },
+                        "channels": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": ["in_app", "email", "sms", "push"]
+                            },
+                            "default": ["in_app"],
+                            "description": "Notification channels to use"
+                        }
+                    },
+                    "required": ["user_id", "message"]
+                }
+            }
+        }
+
 class CrisisSupportTool(BaseTool):
     """Tool for providing crisis support and emergency resources"""
 
@@ -397,6 +699,9 @@ class ToolManager:
             "rag_search": RAGSearchTool(),
             "get_calendar_events": CalendarEventsTool(),
             "get_study_resources": StudyResourcesTool(),
+            "messaging_fetch": MessagingFetchTool(),
+            "lms_deadlines": LMSDdeadlinesTool(),
+            "send_notification": NotificationsTool(),
             "get_crisis_support": CrisisSupportTool()
         }
         self.llm_service = llm_service

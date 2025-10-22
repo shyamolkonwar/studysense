@@ -17,6 +17,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 from app.llm.llm_service import llm_service, LLMMessage, LLMConfig
 from app.agents.stress_analyzer import stress_analyzer
 from app.agents.tool_manager import tool_manager, ToolCall
+from app.agents.agent_coordinator import agent_coordinator
 from app.risk_scoring.risk_scorer import risk_scorer
 from app.tasks.analysis_tasks import process_daily_batch
 from app.api.v1.streaming.stream_manager import stream_manager, StreamEvent
@@ -220,6 +221,28 @@ class Phase3Demo:
                 print(f"❌ Study resources tool failed: {study_result.error}")
         except Exception as e:
             print(f"❌ Study resources tool error: {e}")
+
+        # Test LangGraph Agent
+        print("\n🤖 LangGraph Agent Demo")
+        print("-" * 30)
+
+        test_messages = [
+            {"role": "user", "content": "I'm really stressed about my upcoming exams and deadlines. Can you help me manage this?"}
+        ]
+
+        try:
+            agent_result = await agent_coordinator.process_request(
+                user_id=self.demo_user_id,
+                messages=test_messages
+            )
+
+            print("✅ Agent processed request successfully")
+            print(f"Response: {agent_result['response'][:200]}...")
+            print(f"Tools used: {agent_result.get('tools_used', 0)}")
+            print(f"Context gathered: {len(agent_result.get('context_used', {}))} sources")
+
+        except Exception as e:
+            print(f"❌ Agent processing error: {e}")
 
     async def _demo_stress_analysis(self):
         """Demonstrate stress analysis capabilities"""

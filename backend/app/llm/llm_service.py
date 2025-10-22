@@ -242,6 +242,115 @@ Your responses should be supportive, practical, and grounded in research while m
             response = await self.generate(messages, config, conversation_id)
             yield response.content
 
+    async def chat(
+        self,
+        messages: List[LLMMessage],
+        config: Optional[LLMConfig] = None,
+        conversation_id: Optional[str] = None,
+        use_rag: bool = True,
+        citations: bool = True
+    ) -> LLMResponse:
+        """
+        Chat interface with RAG augmentation and citations
+
+        Args:
+            messages: List of conversation messages
+            config: Optional configuration override
+            conversation_id: Optional conversation ID for context
+            use_rag: Whether to use RAG for enhanced responses
+            citations: Whether to include citations in response
+
+        Returns:
+            LLMResponse with enhanced chat response
+        """
+        config = config or self.default_config
+
+        # Enhance with RAG if requested
+        if use_rag and len(messages) > 0:
+            enhanced_messages = await self._enhance_with_rag(messages, citations)
+        else:
+            enhanced_messages = messages
+
+        # Use generate method with chat-specific configuration
+        chat_config = LLMConfig(
+            provider=config.provider,
+            model=config.model,
+            temperature=min(config.temperature, 0.8),  # Slightly more conservative for chat
+            max_tokens=config.max_tokens,
+            system_prompt=self._get_chat_system_prompt(),
+            stream=False
+        )
+
+        return await self.generate(enhanced_messages, chat_config, conversation_id)
+
+    async def embed(
+        self,
+        texts: List[str],
+        config: Optional[LLMConfig] = None
+    ) -> List[List[float]]:
+        """
+        Generate embeddings for texts
+
+        Args:
+            texts: List of texts to embed
+            config: Optional configuration override
+
+        Returns:
+            List of embedding vectors
+        """
+        config = config or self.default_config
+        provider = self._get_provider(config.provider)
+
+        try:
+            # Use provider's embedding capability
+            if hasattr(provider, 'embed'):
+                return await provider.embed(texts, config)
+            else:
+                # Fallback: use a simple text-based embedding (placeholder)
+                logger.warning(f"Provider {config.provider} doesn't support embeddings, using fallback")
+                return self._fallback_embeddings(texts)
+
+        except Exception as e:
+            logger.error(f"Error generating embeddings with {config.provider}: {e}")
+            # Try fallback provider
+            return await self._fallback_embed(texts, config)
+
+    async def moderate(
+        self,
+        content: str,
+        config: Optional[LLMConfig] = None
+    ) -> Dict[str, Any]:
+        """
+        Moderate content for safety and appropriateness
+
+        Args:
+            content: Content to moderate
+            config: Optional configuration override
+
+        Returns:
+            Moderation results with safety flags and suggestions
+        """
+        config = config or self.default_config
+        provider = self._get_provider(config.provider)
+
+        try:
+            # Use provider's moderation capability
+            if hasattr(provider, 'moderate'):
+                return await provider.moderate(content, config)
+            else:
+                # Fallback: basic keyword-based moderation
+                return self._fallback_moderation(content)
+
+        except Exception as e:
+            logger.error(f"Error moderating content with {config.provider}: {e}")
+            # Return safe defaults on error
+            return {
+                "safe": True,
+                "categories": {},
+                "flagged": False,
+                "error": str(e)
+            }
+
     async def _fallback_generate(
         self,
         messages: List[LLMMessage],
@@ -345,6 +454,208 @@ Your responses should be supportive, practical, and grounded in research while m
                 "temperature": self.default_config.temperature,
                 "max_tokens": self.default_config.max_tokens
             }
+        }
+
+    def _get_chat_system_prompt(self) -> str:
+        """Get specialized system prompt for chat interactions"""
+        return """You are StudySense, a compassionate AI assistant specializing in student mental health and academic support. Your role is to provide:
+
+1. **Empathetic Support** - Listen actively and validate student experiences
+2. **Evidence-Based Guidance** - Draw from verified knowledge sources when providing advice
+3. **Practical Strategies** - Offer concrete, actionable steps students can take
+4. **Resource Connection** - Direct students to appropriate campus and community resources
+5. **Crisis Recognition** - Immediately identify and respond to mental health emergencies
+
+**Communication Style:**
+- Warm, supportive, and non-judgmental
+- Use simple, clear language
+- Ask clarifying questions when needed
+- Provide hope and encouragement
+- Maintain appropriate professional boundaries
+
+**Response Structure:**
+- Acknowledge the student's feelings/experience
+- Provide relevant information or strategies
+- Include specific citations when referencing sources
+- Suggest next steps or resources
+- End with an open invitation for follow-up
+
+**Safety First:**
+If you detect any signs of crisis, self-harm, or severe distress, immediately:
+- Express concern for their safety
+- Provide emergency contact information
+- Recommend immediate professional help
+- Do not attempt to provide crisis counseling yourself
+
+Remember: You are a supportive tool, not a replacement for professional mental health care."""
+
+    async def _enhance_with_rag(self, messages: List[LLMMessage], citations: bool = True) -> List[LLMMessage]:
+        """Enhance messages with RAG context and citations"""
+        try:
+            from ..rag.retrieval import retrieval_pipeline
+
+            # Extract the latest user message for RAG query
+            user_messages = [msg for msg in messages if msg.role == "user"]
+            if not user_messages:
+                return messages
+
+            latest_message = user_messages[-1].content
+
+            # Perform RAG search
+            rag_results = await retrieval_pipeline.retrieve(
+                query=latest_message,
+                k=3,
+                collections=["kb_global", "campus_resources"]
+            )
+
+            if rag_results.results:
+                # Build context from RAG results
+                context_parts = []
+                citations_list = []
+
+                for i, result in enumerate(rag_results.results[:3], 1):
+                    context_parts.append(f"Source {i}: {result.text}")
+                    citations_list.append({
+                        "number": i,
+                        "source": result.metadata.get("document_id", "Knowledge Base"),
+                        "relevance": result.score
+                    })
+
+                context = "\n\n".join(context_parts)
+
+                # Create enhanced system message
+                rag_prompt = f"""Use the following relevant information to inform your response:
+
+{context}
+
+{'Include citations in your response using [1], [2], etc. format.' if citations else 'Use this information to provide informed guidance.'}
+
+Remember to cite sources when providing specific advice or information."""
+
+                # Add RAG context to system message
+                enhanced_messages = []
+                system_found = False
+
+                for msg in messages:
+                    if msg.role == "system":
+                        # Enhance existing system message
+                        enhanced_content = f"{msg.content}\n\n{rag_prompt}"
+                        enhanced_messages.append(LLMMessage(
+                            role="system",
+                            content=enhanced_content,
+                            metadata={**msg.metadata, "rag_enhanced": True, "citations": citations_list}
+                        ))
+                        system_found = True
+                    else:
+                        enhanced_messages.append(msg)
+
+                # Add system message if none exists
+                if not system_found:
+                    enhanced_messages.insert(0, LLMMessage(
+                        role="system",
+                        content=f"{self._get_chat_system_prompt()}\n\n{rag_prompt}",
+                        metadata={"rag_enhanced": True, "citations": citations_list}
+                    ))
+
+                return enhanced_messages
+            else:
+                return messages
+
+        except Exception as e:
+            logger.warning(f"RAG enhancement failed: {e}")
+            return messages
+
+    def _fallback_embeddings(self, texts: List[str]) -> List[List[float]]:
+        """Simple fallback embedding using basic text features"""
+        import hashlib
+
+        embeddings = []
+        for text in texts:
+            # Create a simple hash-based embedding (not for production)
+            hash_obj = hashlib.md5(text.encode())
+            hash_bytes = hash_obj.digest()
+            # Convert to float list (normalized to 0-1 range)
+            embedding = [b / 255.0 for b in hash_bytes]
+            # Pad/truncate to 384 dimensions (common embedding size)
+            if len(embedding) < 384:
+                embedding.extend([0.0] * (384 - len(embedding)))
+            else:
+                embedding = embedding[:384]
+            embeddings.append(embedding)
+
+        return embeddings
+
+    async def _fallback_embed(self, texts: List[str], config: LLMConfig) -> List[List[float]]:
+        """Try fallback providers for embeddings"""
+        fallback_providers = [
+            ModelProvider.OPENAI,
+            ModelProvider.ANTHROPIC,
+            ModelProvider.MISTRAL,
+            ModelProvider.LOCAL
+        ]
+
+        # Remove the failed provider
+        if config.provider in fallback_providers:
+            fallback_providers.remove(config.provider)
+
+        for fallback_provider in fallback_providers:
+            if fallback_provider in self.providers:
+                provider = self.providers[fallback_provider]
+                if hasattr(provider, 'embed'):
+                    try:
+                        logger.info(f"Trying embedding fallback provider: {fallback_provider}")
+                        return await provider.embed(texts, config)
+                    except Exception as e:
+                        logger.warning(f"Fallback embedding provider {fallback_provider} also failed: {e}")
+                        continue
+
+        # Ultimate fallback
+        logger.warning("All embedding providers failed, using hash-based fallback")
+        return self._fallback_embeddings(texts)
+
+    def _fallback_moderation(self, content: str) -> Dict[str, Any]:
+        """Basic keyword-based content moderation"""
+        # Define sensitive keywords and patterns
+        crisis_keywords = [
+            "suicide", "kill myself", "end it all", "self-harm", "cutting",
+            "overdose", "hurt myself", "not worth living", "better off dead"
+        ]
+
+        sensitive_keywords = [
+            "depression", "anxiety", "panic", "trauma", "abuse", "assault",
+            "eating disorder", "addiction", "substance abuse"
+        ]
+
+        content_lower = content.lower()
+
+        # Check for crisis indicators
+        crisis_flags = [kw for kw in crisis_keywords if kw in content_lower]
+        sensitive_flags = [kw for kw in sensitive_keywords if kw in content_lower]
+
+        # Determine safety level
+        if crisis_flags:
+            safety_level = "crisis"
+            safe = False
+        elif sensitive_flags:
+            safety_level = "sensitive"
+            safe = True  # Still safe but needs careful handling
+        else:
+            safety_level = "safe"
+            safe = True
+
+        return {
+            "safe": safe,
+            "categories": {
+                "crisis_indicators": crisis_flags,
+                "sensitive_topics": sensitive_flags
+            },
+            "flagged": not safe,
+            "safety_level": safety_level,
+            "moderation_type": "keyword_based",
+            "recommendations": [
+                "Refer to mental health professional" if crisis_flags else None,
+                "Handle with care and empathy" if sensitive_flags else None
+            ]
         }
 
 # Global LLM service instance
