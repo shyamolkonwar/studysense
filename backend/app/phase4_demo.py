@@ -9,10 +9,10 @@ import logging
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
-# Import Phase 4 components
-from app.analysis.phase4_integration import (
-    Phase4AnalysisEngine,
-    Phase4AnalysisRequest
+# Import analysis components
+from app.analysis.analysis_pipeline import (
+    AnalysisPipeline,
+    AnalysisRequest
 )
 
 # Set up logging
@@ -192,8 +192,8 @@ async def demo_phase4_analysis():
     print("=" * 50)
 
     # Initialize the analysis engine
-    engine = Phase4AnalysisEngine()
-    print("✅ Phase 4 Analysis Engine initialized")
+    engine = AnalysisPipeline()
+    print("✅ Analysis Pipeline initialized")
 
     # Demo 1: High-risk scenario
     print("\n📊 Demo 1: High-Risk Scenario Analysis")
@@ -201,7 +201,7 @@ async def demo_phase4_analysis():
 
     high_risk_data = create_sample_data()
 
-    request1 = Phase4AnalysisRequest(
+    request1 = AnalysisRequest(
         user_id="demo_user_001",
         messages=high_risk_data["messages"],
         activities=high_risk_data["activities"],
@@ -246,7 +246,7 @@ async def demo_phase4_analysis():
 
     moderate_risk_data = create_moderate_risk_data()
 
-    request2 = Phase4AnalysisRequest(
+    request2 = AnalysisRequest(
         user_id="demo_user_002",
         messages=moderate_risk_data["messages"],
         activities=moderate_risk_data["activities"],

@@ -39,11 +39,11 @@ from .recommendations_engine import (
     recommendations_engine
 )
 
-from .phase4_integration import (
-    Phase4AnalysisEngine,
-    Phase4AnalysisRequest,
-    Phase4AnalysisResult,
-    phase4_engine
+from .analysis_pipeline import (
+    AnalysisPipeline,
+    AnalysisRequest,
+    AnalysisResult,
+    analysis_pipeline
 )
 
 from .config import config, get_config, validate_config
@@ -72,10 +72,10 @@ __all__ = [
     "RecommendationSource",
     "PersonalizedRecommendations",
     "recommendations_engine",
-    "Phase4AnalysisEngine",
-    "Phase4AnalysisRequest",
-    "Phase4AnalysisResult",
-    "phase4_engine",
+    "AnalysisPipeline",
+    "AnalysisRequest",
+    "AnalysisResult",
+    "analysis_pipeline",
     "config",
     "get_config",
     "validate_config"
