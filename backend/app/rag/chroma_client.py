@@ -169,22 +169,29 @@ class ChromaClient:
 
     def query_kb_global(self, query: str, n_results: int = 5, where: Optional[Dict] = None) -> Dict:
         """Query global knowledge base"""
+        # Filter out unsupported MongoDB-style operators
+        filtered_where = self._filter_chromadb_compatible_where(where)
+
         return self.kb_global.query(
             query_texts=[query],
             n_results=n_results,
-            where=where
+            where=filtered_where
         )
 
     def query_campus_resources(self, query: str, institution: str, n_results: int = 5, where: Optional[Dict] = None) -> Dict:
         """Query campus-specific resources"""
-        if where is None:
-            where = {}
-        where["institution"] = institution
+        # Filter out unsupported MongoDB-style operators
+        filtered_where = self._filter_chromadb_compatible_where(where)
+
+        # Add institution filter if provided
+        if filtered_where is None:
+            filtered_where = {}
+        filtered_where["institution"] = institution
 
         return self.campus_resources.query(
             query_texts=[query],
             n_results=n_results,
-            where=where
+            where=filtered_where
         )
 
     def query_user_context(self, user_id: str, query: str, n_results: int = 10, where: Optional[Dict] = None) -> Dict:
@@ -280,6 +287,33 @@ class ChromaClient:
                 stats[name] = {"error": str(e)}
 
         return stats
+
+    def _filter_chromadb_compatible_where(self, where: Optional[Dict]) -> Optional[Dict]:
+        """Filter out MongoDB-style operators that ChromaDB doesn't support"""
+        if not where:
+            return None
+
+        # ChromaDB supports simple key-value equality filters
+        # Remove any MongoDB-style operators like $or, $exists, etc.
+        filtered_where = {}
+
+        for key, value in where.items():
+            # Skip MongoDB operators
+            if key.startswith('$'):
+                continue
+
+            # Skip complex objects with operators
+            if isinstance(value, dict):
+                # Check if it's a simple value or contains operators
+                has_operators = any(k.startswith('$') for k in value.keys())
+                if not has_operators:
+                    filtered_where[key] = value
+                # Skip fields with operators like {"$exists": False}
+            else:
+                # Simple key-value pair
+                filtered_where[key] = value
+
+        return filtered_where if filtered_where else None
 
 
 # Global instance

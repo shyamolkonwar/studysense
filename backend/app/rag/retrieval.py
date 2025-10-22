@@ -47,7 +47,7 @@ class RetrievalPipeline:
 
         # Default retrieval configuration
         self.default_k = 10
-        self.min_relevance_threshold = 0.6
+        self.min_relevance_threshold = 0.05  # Set to reasonable threshold for SentenceTransformer
         self.collection_weights = {
             "kb_global": 1.0,
             "campus_resources": 0.9,
@@ -152,30 +152,27 @@ class RetrievalPipeline:
                        filters: Optional[Dict[str, Any]],
                        stress_level: Optional[str],
                        target_audience: Optional[str],
-                       campus: Optional[str]) -> Dict[str, Any]:
-        """Build comprehensive metadata filters"""
+                       campus: Optional[str]) -> Optional[Dict[str, Any]]:
+        """Build ChromaDB-compatible metadata filters"""
 
         metadata_filters = filters.copy() if filters else {}
 
-        # Add standard filters
+        # ChromaDB doesn't support MongoDB-style operators like $or, $exists
+        # We need to use simple key-value filters
+
         if stress_level:
-            metadata_filters["$or"] = [
-                {"stress_level": stress_level},
-                {"stress_level": {"$exists": False}}  # Include documents without stress level
-            ]
+            # For stress level, we'll filter in the application layer since ChromaDB
+            # doesn't support complex logical operators
+            metadata_filters["stress_level_filter"] = stress_level
 
         if target_audience:
             metadata_filters["target_audience"] = target_audience
 
         if campus and campus != "general":
-            metadata_filters["$or"] = metadata_filters.get("$or", [])
-            metadata_filters["$or"].extend([
-                {"campus": campus},
-                {"campus": "general"},
-                {"campus": {"$exists": False}}
-            ])
+            metadata_filters["campus"] = campus
 
-        return metadata_filters
+        # Return None if no filters to avoid ChromaDB errors
+        return metadata_filters if metadata_filters else None
 
     async def _search_collections(self,
                                  queries: List[str],
