@@ -14,12 +14,12 @@ import logging
 # Add app directory to Python path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from llm.llm_service import llm_service, LLMMessage, LLMConfig
-from agents.stress_analyzer import stress_analyzer
-from agents.tool_manager import tool_manager, ToolCall
-from risk_scoring.risk_scorer import risk_scorer
-from tasks.analysis_tasks import process_daily_batch
-from api.v1.streaming.stream_manager import stream_manager, StreamEvent
+from app.llm.llm_service import llm_service, LLMMessage, LLMConfig
+from app.agents.stress_analyzer import stress_analyzer
+from app.agents.tool_manager import tool_manager, ToolCall
+from app.risk_scoring.risk_scorer import risk_scorer
+from app.tasks.analysis_tasks import process_daily_batch
+from app.api.v1.streaming.stream_manager import stream_manager, StreamEvent
 
 # Setup logging
 logging.basicConfig(

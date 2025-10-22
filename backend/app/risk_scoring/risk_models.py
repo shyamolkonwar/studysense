@@ -86,9 +86,9 @@ class RiskScore:
     personalized_weights: Optional[Dict[str, float]] = None
 
     # Recommendations
-    primary_concerns: List[str]            # Top risk factors
-    recommended_actions: List[Dict[str, Any]]
-    escalation_threshold_met: bool
+    primary_concerns: Optional[List[str]] = None     # Top risk factors
+    recommended_actions: Optional[List[Dict[str, Any]]] = None
+    escalation_threshold_met: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization"""

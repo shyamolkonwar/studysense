@@ -1,5 +1,4 @@
 from typing import List, Dict, Any, Optional, AsyncGenerator
-from abc import ABC, abstractmethod
 import openai
 import logging
 import json
@@ -9,27 +8,35 @@ from ..types import LLMMessage, LLMResponse, LLMConfig
 
 logger = logging.getLogger(__name__)
 
-class OpenAIProvider:
-    """OpenAI API provider implementation"""
+class MistralProvider:
+    """Mistral AI API provider implementation"""
 
     def __init__(self, api_key: str):
         """
-        Initialize OpenAI provider
+        Initialize Mistral provider
 
         Args:
-            api_key: OpenAI API key
+            api_key: Mistral AI API key
         """
         self.api_key = api_key
+        self.base_url = "https://api.mistral.ai/v1"
         self.default_models = [
-            "gpt-4o-mini",
-            "gpt-4",
-            "gpt-3.5-turbo"
+            "mistral-large-latest",
+            "mistral-medium",
+            "mistral-small",
+            "mistral-7b-instruct",
+            "mixtral-8x7b-instruct"
         ]
-        logger.info("OpenAI provider initialized")
+
+        # Configure OpenAI client for Mistral
+        openai.api_key = api_key
+        openai.api_base = self.base_url
+
+        logger.info("Mistral AI provider initialized")
 
     def get_default_model(self) -> str:
         """Get default model for this provider"""
-        return "gpt-4o-mini"
+        return "mistral-large-latest"
 
     async def generate(
         self,
@@ -37,7 +44,7 @@ class OpenAIProvider:
         config: LLMConfig
     ) -> LLMResponse:
         """
-        Generate response using OpenAI API
+        Generate response using Mistral AI API
 
         Args:
             messages: List of conversation messages
@@ -81,7 +88,7 @@ class OpenAIProvider:
             return self._convert_response(response, config)
 
         except Exception as e:
-            logger.error(f"OpenAI API error: {str(e)}")
+            logger.error(f"Mistral AI API error: {str(e)}")
             raise
 
     async def generate_stream(
@@ -127,7 +134,7 @@ class OpenAIProvider:
                         yield delta.content
 
         except Exception as e:
-            logger.error(f"OpenAI streaming error: {str(e)}")
+            logger.error(f"Mistral AI streaming error: {str(e)}")
             raise
 
     def _convert_messages(self, messages: List[LLMMessage]) -> List[Dict[str, Any]]:
@@ -171,7 +178,7 @@ class OpenAIProvider:
         }
 
     def _convert_response(self, response: Any, config: LLMConfig) -> LLMResponse:
-        """Convert OpenAI response to LLMResponse format"""
+        """Convert Mistral AI response to LLMResponse format"""
         try:
             choice = response.choices[0]
             message = choice.message
@@ -210,7 +217,7 @@ class OpenAIProvider:
                 tool_calls=tool_calls,
                 usage=usage,
                 model=config.model,
-                provider="openai",
+                provider="mistral",
                 metadata={
                     "finish_reason": choice.finish_reason,
                     "created": response.created
@@ -218,13 +225,13 @@ class OpenAIProvider:
             )
 
         except Exception as e:
-            logger.error(f"Error converting OpenAI response: {e}")
+            logger.error(f"Error converting Mistral AI response: {e}")
             # Fallback response
             return LLMResponse(
                 content="I apologize, but I encountered an error processing my response.",
                 role="assistant",
                 model=config.model,
-                provider="openai",
+                provider="mistral",
                 metadata={"error": str(e)}
             )
 
@@ -232,14 +239,14 @@ class OpenAIProvider:
         """List available models"""
         try:
             models = await openai.Model.alist()
-            return [model.id for model in models.data if model.id.startswith("gpt-")]
+            return [model.id for model in models.data if any(mistral_model in model.id for mistral_model in ["mistral", "mixtral"])]
         except Exception as e:
-            logger.error(f"Error listing OpenAI models: {e}")
+            logger.error(f"Error listing Mistral AI models: {e}")
             return self.default_models
 
     def validate_config(self, config: LLMConfig) -> bool:
         """Validate configuration for this provider"""
         if config.model not in self.default_models:
-            logger.warning(f"Model {config.model} may not be supported by OpenAI")
+            logger.warning(f"Model {config.model} may not be supported by Mistral AI")
 
         return True

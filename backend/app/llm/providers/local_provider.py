@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ..llm_service import LLMMessage, LLMResponse, LLMConfig
+from ..types import LLMMessage, LLMResponse, LLMConfig
 
 logger = logging.getLogger(__name__)
 

@@ -1,57 +1,14 @@
 from typing import List, Dict, Any, Optional, Union, AsyncGenerator
 from abc import ABC, abstractmethod
 import logging
-from dataclasses import dataclass
-from enum import Enum
 import asyncio
 import json
 
-from .providers import OpenAIProvider, AnthropicProvider, LocalProvider
+from .providers import OpenAIProvider, AnthropicProvider, LocalProvider, MistralProvider
+from .types import ModelProvider, LLMMessage, LLMResponse, LLMConfig
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
-
-class ModelProvider(str, Enum):
-    """Supported LLM providers"""
-    OPENAI = "openai"
-    ANTHROPIC = "anthropic"
-    LOCAL = "local"
-
-@dataclass
-class LLMMessage:
-    """Represents a message in the conversation"""
-    role: str  # "system", "user", "assistant", "tool"
-    content: str
-    metadata: Optional[Dict[str, Any]] = None
-    tool_calls: Optional[List[Dict[str, Any]]] = None
-    tool_call_id: Optional[str] = None
-
-@dataclass
-class LLMResponse:
-    """Represents an LLM response"""
-    content: str
-    role: str = "assistant"
-    metadata: Optional[Dict[str, Any]] = None
-    tool_calls: Optional[List[Dict[str, Any]]] = None
-    usage: Optional[Dict[str, Any]] = None
-    model: Optional[str] = None
-    provider: Optional[str] = None
-    reasoning: Optional[str] = None  # For models that provide reasoning
-
-@dataclass
-class LLMConfig:
-    """Configuration for LLM service"""
-    provider: ModelProvider
-    model: str
-    temperature: float = 0.7
-    max_tokens: Optional[int] = None
-    top_p: Optional[float] = None
-    frequency_penalty: Optional[float] = None
-    presence_penalty: Optional[float] = None
-    stream: bool = False
-    system_prompt: Optional[str] = None
-    tools: Optional[List[Dict[str, Any]]] = None
-    tool_choice: Optional[Union[str, Dict[str, Any]]] = None
 
 class LLMService:
     """
@@ -91,6 +48,14 @@ class LLMService:
             return LLMConfig(
                 provider=ModelProvider.ANTHROPIC,
                 model="claude-3-haiku-20240307",
+                temperature=0.7,
+                max_tokens=2000,
+                system_prompt=self._get_default_system_prompt()
+            )
+        elif hasattr(settings, 'MISTRAL_API_KEY') and settings.MISTRAL_API_KEY:
+            return LLMConfig(
+                provider=ModelProvider.MISTRAL,
+                model="mistral-large-latest",
                 temperature=0.7,
                 max_tokens=2000,
                 system_prompt=self._get_default_system_prompt()
@@ -154,6 +119,16 @@ Your responses should be supportive, practical, and grounded in research while m
                 logger.info("Anthropic provider initialized")
         except Exception as e:
             logger.warning(f"Failed to initialize Anthropic provider: {e}")
+
+        try:
+            # Initialize Mistral provider
+            if hasattr(settings, 'MISTRAL_API_KEY') and settings.MISTRAL_API_KEY:
+                providers[ModelProvider.MISTRAL] = MistralProvider(
+                    api_key=settings.MISTRAL_API_KEY
+                )
+                logger.info("Mistral AI provider initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Mistral AI provider: {e}")
 
         try:
             # Initialize local provider (always available as fallback)
@@ -277,6 +252,7 @@ Your responses should be supportive, practical, and grounded in research while m
         fallback_providers = [
             ModelProvider.OPENAI,
             ModelProvider.ANTHROPIC,
+            ModelProvider.MISTRAL,
             ModelProvider.LOCAL
         ]
 

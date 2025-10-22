@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     # LLM Configuration
     OPENAI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
+    MISTRAL_API_KEY: Optional[str] = None
     DEFAULT_LLM_PROVIDER: str = "openai"
     DEFAULT_MODEL: str = "gpt-3.5-turbo"
 

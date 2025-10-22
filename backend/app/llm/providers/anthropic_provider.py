@@ -4,7 +4,7 @@ import logging
 import json
 import asyncio
 
-from ..llm_service import LLMMessage, LLMResponse, LLMConfig
+from ..types import LLMMessage, LLMResponse, LLMConfig
 
 logger = logging.getLogger(__name__)
 
