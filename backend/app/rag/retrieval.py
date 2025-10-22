@@ -24,7 +24,7 @@ class RetrievalResponse:
     query: str
     results: List[RetrievalResult]
     total_results: int
-        query_time: datetime
+    query_time: datetime
     collections_searched: List[str]
     metadata: Dict[str, Any]
 

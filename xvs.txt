@@ -1,0 +1,335 @@
+MVP Project Description: Mental Health & Study-Stress Analyzer
+Executive Summary
+The Mental Health & Study-Stress Analyzer MVP is a next-generation Generative AI platform designed to proactively monitor student well-being by analyzing social interactions, messages, and digital activity patterns. Leveraging Retrieval-Augmented Generation (RAG) and dynamic AI agent tool calling, it provides early alerts for stress and mental health risk, actionable emotional insights, and context-driven support recommendations. The objective is to empower both students and institutions with timely, personalized interventions that promote well-being and academic productivity.
+
+Problem Statement
+Rising academic pressure and post-pandemic challenges have led to a surge in mental health issues among students, with significant percentages experiencing moderate to severe depression, stress, and anxiety. Traditional surveys and self-reporting are insufficient for persistent, early interventions. There’s an urgent need for an AI-driven solution that continuously synthesizes digital behavioral signals to identify and address stress at its root, while protecting user privacy and autonomy.​
+
+Core Technical Requirements
+RAG-based Analysis: Contextually understand and retrieve insights from behavioral and communication data.
+
+AI Agent Tool Calling: Integrate and extract data in real time from productivity and communication platforms.
+
+Dynamic LLM Backbone: Support any LLM (cloud or local) with modular integration.
+
+Scalable Vector Database: Use ChromaDB for vector storage, semantic search, and persistence.
+
+Security & Privacy: Full end-to-end encryption and compliance with student data regulations.
+
+Tech Stack
+Frontend (Next.js)
+Next.js 14 (App Router), React 18, TypeScript
+
+TailwindCSS, Shadcn/ui, Radix UI
+
+Zustand, TanStack Query/SWR for state management and fetch
+
+Chart.js/Recharts, Framer Motion (visualizations/animation)
+
+NextAuth.js/Clerk, JWT (auth)
+
+Deployed via Vercel/Netlify
+
+Backend (Python)
+FastAPI, Uvicorn (web server)
+
+LangChain/LangGraph for RAG, Agent workflows, Tool-calling
+
+ChromaDB (RAG vector store)
+
+PostgreSQL (user & session data)
+
+SQLAlchemy, Alembic (ORM & migrations)
+
+HuggingFace Transformers, OpenAI/Anthropic/Gemini SDK (LLM integration, dynamic selection)
+
+NLTK, spaCy, TextBlob, VADER (NLP/Sentiment)
+
+Redis, Celery (background tasks)
+
+Monitoring: Prometheus, Grafana, Sentry
+
+Infrastructure
+Docker, Docker Compose (containers/dev ops)
+
+GitHub Actions (CI/CD)
+
+AWS/GCP/Azure (backend hosting)
+
+Optional: WebSockets/SSE, S3/MinIO for object storage
+
+Project Structure
+Frontend (Next.js Example)
+text
+mental-health-analyzer-frontend/
+├── app/           # App router, dashboard, auth, chat, API routes
+│   ├── (dashboard)/overview/insights/chat/resources/settings/
+│   ├── (admin)/analytics/alerts/
+│   ├── api/auth/webhooks/
+├── components/    # UI elements, charts, chat, timeline
+├── lib/           # API clients, hooks, utils
+├── store/         # Zustand global store
+├── public/        # Assets
+Backend (Python/FastAPI Example)
+text
+mental-health-analyzer-backend/
+├── app/
+│   ├── main.py       # FastAPI entrypoint
+│   ├── api/v1/       # Endpoints: auth, users, analysis, chat, alerts, resources, integrations
+│   ├── services/     # LLM, RAG, agent, notifications, sentiment logic
+│   ├── agents/       # Stress analyzer, support recommender, tool integrations
+│   ├── rag/          # Embeddings, vector db, retrieval
+│   ├── models/       # SQLAlchemy models
+│   ├── schemas/      # Pydantic schemas
+│   ├── tasks/        # Celery & background jobs
+│   ├── data/         # Knowledge base for RAG, pre-computed embeddings
+│   ├── tests/
+User Workflows
+1. Student User
+Signup/Login: Email/SSO/institutional auth.
+
+Onboard & Consent: Privacy policy, data control preferences.
+
+Data Integration: Connects messaging/LMS/calendar/wearables for analysis.
+
+Dashboard: Real-time stress & mood analytics, risk level, trends.
+
+Insight Timeline: Visualizes stress events, sentiments, and digital triggers.
+
+Personalized Support: Recommends tailored actions, resources, and quick connects.
+
+Early Alerts: Notifications and crisis escalation when concerning patterns detected.
+
+Chatbot: Conversational AI for self-check, tips, and emotional support.
+
+Privacy Controls: Adjust permissions, download/delete data, feedback.
+
+2. Admin/Counselor
+Secure Admin Login.
+
+Dashboard (Aggregated View): Flagged-at-risk heatmaps, anomaly detection, institutional trend analytics.
+
+Case Management: Drill-down on flagged cases (with user consent).
+
+Resource & Event Management: Update campus resources and intervention events.
+
+Reporting & Analytics: Anonymous, period-wise reporting (never for surveillance).
+
+3. AI Agent/Integration Workflows
+Tool Calling: Fetches/streams data from messaging, calendars, LMS, wearables.
+
+Real-Time RAG Processing: Contextualizes messages, events, triggers using vector search.
+
+Notifications & Recommendations: Suggests actions and triggers alerts based on detected stress patterns.
+
+Auditability: All agent-initiated actions logged for transparency.
+
+Key Features & Functionalities
+1. Behavioral & Sentiment Analysis
+Tracks communication frequency, sentiment, and anomalies over time.​
+
+Monitor sleep, study, and activity patterns; detects stress surges.
+
+Correlate major academic events with digital/social behaviors.
+
+2. Contextual Understanding via RAG
+Ingests a curated knowledge base (CBT, mindfulness, campus resources) into ChromaDB.
+
+Fuses live context (student’s history, academic calendar, trigger events) with retrieved knowledge for contextual, personalized alerts and guidance.
+
+3. Real-Time AI Agent Tool Calling
+Connects and interacts with student’s digital ecosystem (platform connectors).
+
+Runs proactive checks: fetches latest communications, detects emerging stress events.
+
+Supports multiple LLMs (OpenAI, HuggingFace, Gemini, local models) — decoupled component.
+
+4. Alerts, Trends & Recommendations
+Multi-level risk classification: Low to crisis.
+
+Trend visualization and projections for both student and admin dashboards.
+
+Contextual actions including self-help, peer/community connection, and escalation protocol.
+
+Data-sharing optional and under user control.
+
+5. Chatbot & Self-Help Guidance
+RAG-powered AI chat interface for FAQ, emotional support, and triaging.
+
+Provides relevant self-care techniques, connects to human counselors if required.
+
+6. Security & Compliance
+End-to-end encryption; institutional (GDPR/FERPA) compliance.
+
+User consent and settings dashboard.
+
+Institutional view limited to anonymized, aggregated trends for ethics and trust.
+
+References
+[Peer-reviewed studies on digital mental health monitoring, RAG, agentic workflows, and ethical AI for students]​
+
+Phases to build:
+
+Phase 0: Ethics, consent, and scope
+Define non-clinical positioning, risk communication, and escalation boundaries to avoid clinical claims in the MVP while offering evidence-informed support and early-warning signals for study stress.​
+
+Implement explicit opt-in consent, granular data scopes (messages metadata vs. content), retention policies, and a clear privacy dashboard for revocation and data export.​
+
+Limit initial integrations to low-friction, well-documented providers (e.g., Google Calendar, Slack, Canvas/Moodle) to de-risk OAuth and event ingestion at MVP scale.​
+
+Phase 1: Domain model and data contracts
+Entities: User, Consent, IntegrationAccount, Message, Activity, Conversation, RiskScore, Alert, Recommendation, Resource, Embedding, and AuditLog with clear ownership, PII boundaries, and purpose binding.​
+
+Storage: PostgreSQL for relational data; ChromaDB collections for knowledge base and per-user context vectors; S3/MinIO for static KB assets and anonymized exports.​
+
+Message schema (normalized): id, user_id, source, timestamp, channel, direction, content_hash, content_redacted, sentiment, embeddings_ref, and risk_features to support incremental reprocessing without duplicating raw PII.​
+
+Phase 2: RAG knowledge base and retrieval
+KB content: coping strategies, CBT/mindfulness snippets, campus resources, crisis policies, and study techniques curated into markdown/pdf with chunking at ~500–800 tokens, semantic titles, and YAML frontmatter metadata.​
+
+ChromaDB collections: kb_global, campus_resources, and user_context with embedding model parity across indexing and query, plus metadata filters for campus, locale, and topic.​
+
+Retrieval pipeline: query -> semantic expand -> hybrid metadata filter -> rerank -> cite top-k chunks, following RAG best practices for groundedness, recency, and domain constraints.​
+
+Phase 3: Provider-agnostic LLM and agent layer
+LLM service interface: generate, chat, embed, and moderate methods, switchable via config for OpenAI/Anthropic/Gemini/HF local with streaming enabled for chat UI responsiveness.​
+
+Agent layer: LangChain/LangGraph graph with tools for calendar_events, messaging_fetch, lms_deadlines, resources_lookup, and notifications, with execution traces for auditability and reproducibility.​
+
+Guardrails: retrieval-augmented prompts with explicit citation slots, instruction hierarchy, and moderation checks to mitigate hallucinations and sensitive-topic mishandling in mental health contexts.​
+
+Phase 4: Analysis and risk scoring engine
+Text processing: sentiment (VADER), emotion tagging, stress lexicon features, and burstiness/frequency signals per channel and timeframe for early anomaly detection.​
+
+Behavioral features: study-hour patterns (calendar + LMS), deadline proximity, message response latency, nocturnal activity, and peer-interaction variance to detect workload-induced stress spikes.​
+
+Risk score formula: combine standardized features with decaying time weights and personalized baselines, e.g., 
+R
+t
+=
+σ
+(
+w
+s
+⋅
+S
+t
++
+w
+e
+⋅
+E
+t
++
+w
+b
+⋅
+B
+t
++
+w
+d
+⋅
+D
+t
++
+b
+)
+R 
+t
+ =σ(w 
+s
+ ⋅S 
+t
+ +w 
+e
+ ⋅E 
+t
+ +w 
+b
+ ⋅B 
+t
+ +w 
+d
+ ⋅D 
+t
+ +b) with percentile-based adaptive thresholds for Low/Mild/Moderate/Severe/Crisis classes.​
+
+Recommendations engine: RAG-grounded tips, campus resources, and small-step action plans aligned to risk class and user preferences with explainability via retrieved evidence snippets.​
+
+Phase 5: Alerts, escalation, and notifications
+Policy-driven rules: threshold crossings, slopes (trend acceleration), and multi-signal corroboration before alert emission to reduce false positives.​
+
+Channels: in-app banners, email, and optional SMS with rate limiting and quiet hours, plus opt-in counselor notifications with explicit per-student consent.​
+
+Escalation: crisis wording with hotline and campus helpline cards, and zero-content forwarding (metadata only) to maintain privacy while nudging timely human contact.​
+
+Phase 6: Backend services (FastAPI)
+Services: auth, users, analysis, chat, alerts, resources, integrations, and admin analytics with dependency-injected repositories and typed Pydantic schemas.​
+
+Tasks and schedulers: Celery + Redis workers for ingestion, batch analysis, weekly KB refresh, and daily trend recomputation to keep API latency low.​
+
+Streaming: Server-Sent Events or websockets for chat and live dashboard updates, with backpressure handling and retry policies.​
+
+Phase 7: Frontend app (Next.js)
+App router structure: auth, dashboard/overview, insights, chat, resources, settings, and admin/analytics/alerts, with server components for data pages and client components for interactive charts.​
+
+State and data fetching: TanStack Query for server state, Zustand for UI state, and SSE streams for chat; optimistic updates for resource bookmarks and preferences.​
+
+Visuals: stress trend lines, mood heatmaps, activity timelines, and alert cards with drill-down to evidence snippets and “why am I seeing this” explanations for transparency.​
+
+Phase 8: Integrations and tool connectors
+Calendar: Google Calendar OAuth, read-only events, deadline clustering, and exam-window tagging to enrich stress context.​
+
+LMS: Canvas/Moodle token-based API for assignments and grades metadata only, avoiding content scraping to reduce risk footprint at MVP stage.​
+
+Messaging: Slack/Teams workspace-scoped read of user’s messages metadata and allowed channels, with optional redacted content sampling for sentiment to respect privacy.​
+
+Phase 9: Security, privacy, and compliance guardrails
+Data minimization: default to metadata and embeddings where feasible; encrypt PII at rest and in transit; rotate keys; and segment secrets per environment.​
+
+RBAC and audit: role-based access (student, counselor, admin), action logs for agent tool calls, and immutable audit trails for alerts and risk score decisions.​
+
+Legal: GDPR-grade consent flows, data export/delete, and DPIA-lite documentation to demonstrate responsible data handling in demos and judge Q&A.​
+
+Phase 10: Evaluation and QA plan
+RAG quality: retrieval precision@k, groundedness rate, and citation accuracy tracked via small adjudication sets seeded from the KB.​
+
+LLM behavior: refusal/guardrail tests on unsafe queries, style and empathy checks, and answer consistency under paraphrase using a lightweight eval harness.​
+
+Product metrics: alert precision/recall (with user/counselor feedback loops), latency SLOs for chat and dashboard, and feature ablation for risk scoring robustness.​
+
+Phase 11: DevOps and environments
+Environments: dev/staging/prod with Docker Compose locally and IaC-ready containers for cloud; structured env vars and secret management per environment.​
+
+CI/CD: lint, type-check, unit/integration tests, container scan, and one-click staging deploy with smoke tests and rollback plan to ensure demo reliability.​
+
+Observability: Sentry for errors, Prometheus/Grafana for metrics, and request tracing to diagnose agent and retrieval bottlenecks during load.​
+
+MVP deliverables by module
+Data & RAG: curated KB, embedding jobs, ChromaDB collections, and retrieval API with citations in responses.​
+
+Agent & LLM: provider-agnostic LLM adapter, agent graph with calendar/LMS/resources tools, and execution tracing API.​
+
+Analysis & Alerts: sentiment/emotion pipeline, risk scoring job, and alert policy engine with notifications and audit logs.​
+
+Frontend UX: dashboard, insights timeline, RAG-cited chatbot, and settings/consent pages with accessible, youth-appropriate design choices.​
+
+Admin UX: cohort heatmaps, alert review queue, and anonymized trends reporting for program steering, not surveillance.​
+
+Key workflows (end-to-end)
+Student onboarding
+
+Auth -> consent scopes -> connect calendar/LMS -> seed baseline week -> dashboard ready with initial risk and study trend tiles.​
+
+Daily ingestion and analysis
+
+Scheduled connector fetch -> normalize -> NLP features -> update risk score -> trigger alerts if thresholds crossed -> refresh dashboard tiles.​
+
+Chat and recommendation
+
+User opens chat -> agent runs RAG retrieval with context -> LLM responds with cited tips and resource links -> user can bookmark or set reminders.​
+
+Admin review
+
+Admin sees aggregated risk heatmap -> opens flagged student (with consent) -> reviews evidence and trend slope -> sends nudge or schedules outreach.

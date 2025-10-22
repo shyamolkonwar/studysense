@@ -12,8 +12,8 @@ class ChromaClient:
         # Connect to ChromaDB server
         self.client = chromadb.HttpClient(host="localhost", port=8000)
 
-        # Use OpenAI embedding function if API key is available, otherwise use SentenceTransformer
-        if settings.OPENAI_API_KEY:
+        # Use OpenAI embedding function if API key is available and valid, otherwise use SentenceTransformer
+        if settings.OPENAI_API_KEY and settings.OPENAI_API_KEY != "your_openai_api_key_here" and len(settings.OPENAI_API_KEY.strip()) > 10:
             self.embedding_function = embedding_functions.OpenAIEmbeddingFunction(
                 api_key=settings.OPENAI_API_KEY,
                 model_name=settings.EMBEDDING_MODEL
@@ -23,7 +23,7 @@ class ChromaClient:
             self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
                 model_name="all-MiniLM-L6-v2"
             )
-            logger.warning("No OpenAI API key provided, using SentenceTransformer embedding function. This is not recommended for production.")
+            logger.warning("No valid OpenAI API key provided, using SentenceTransformer embedding function. This is not recommended for production.")
 
         # Initialize collections
         self._init_collections()
@@ -104,15 +104,27 @@ class ChromaClient:
                 embedding_function=self.embedding_function
             )
             logger.info(f"Collection '{name}' already exists, using existing collection")
-        except Exception:
-            collection = self.client.create_collection(
-                name=name,
-                embedding_function=self.embedding_function,
-                metadata=metadata
-            )
-            logger.info(f"Created new collection '{name}'")
-
-        return collection
+            return collection
+        except Exception as e:
+            logger.info(f"Collection '{name}' does not exist or error getting it: {e}, creating new collection")
+            try:
+                collection = self.client.create_collection(
+                    name=name,
+                    embedding_function=self.embedding_function,
+                    metadata=metadata
+                )
+                logger.info(f"Created new collection '{name}'")
+                return collection
+            except Exception as create_e:
+                if "already exists" in str(create_e).lower():
+                    logger.info(f"Collection '{name}' already exists, getting without embedding function")
+                    # Try to get collection without embedding function if it already exists
+                    collection = self.client.get_collection(name=name)
+                    logger.info(f"Retrieved existing collection '{name}'")
+                    return collection
+                else:
+                    logger.error(f"Failed to create collection '{name}': {create_e}")
+                    raise
 
     def add_to_kb_global(self, documents: List[str], metadatas: List[Dict], ids: List[str]):
         """Add documents to the global knowledge base"""

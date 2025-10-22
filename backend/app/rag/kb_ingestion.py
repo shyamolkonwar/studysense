@@ -59,13 +59,19 @@ class KnowledgeBaseIngestion:
                 stats["errors"].append(f"Directory not found: {self.kb_directory}")
                 return stats
 
-            # Find all supported files
-            files_to_process = []
-            for ext in self.supported_extensions:
-                files_to_process.extend(self.kb_directory.glob(f"*{ext}"))
-                # Also search subdirectories
-                files_to_process.extend(self.kb_directory.rglob(f"*{ext}"))
+            # Clear all collections first to avoid ID conflicts
+            if force_reingest:
+                logger.info("Force reingest enabled - clearing all collections")
+                await self._clear_all_collections()
 
+            # Find all supported files
+            files_to_process = set()
+            for ext in self.supported_extensions:
+                files_to_process.update(self.kb_directory.glob(f"*{ext}"))
+                # Also search subdirectories
+                files_to_process.update(self.kb_directory.rglob(f"*{ext}"))
+
+            files_to_process = list(files_to_process)
             stats["files_found"] = len(files_to_process)
 
             logger.info(f"Found {stats['files_found']} files to process")
@@ -121,6 +127,7 @@ class KnowledgeBaseIngestion:
             file_hash = self._calculate_file_hash(file_path)
             document_id = file_path.stem
 
+            existing_doc = None
             if not force_reingest:
                 existing_doc = self._check_document_exists(document_id)
                 if existing_doc and existing_doc.get("file_hash") == file_hash:
@@ -224,6 +231,28 @@ class KnowledgeBaseIngestion:
             return "campus_resources"
         else:
             return "kb_global"
+
+    async def _clear_all_collections(self):
+        """Clear all documents from all collections"""
+        try:
+            collections = ["kb_global", "campus_resources", "user_context", "conversation_context", "risk_patterns"]
+
+            for collection_name in collections:
+                try:
+                    collection = getattr(self.chroma_client, collection_name, None)
+                    if collection:
+                        # Get all documents
+                        result = collection.get()
+                        if result and result.get("ids"):
+                            collection.delete(ids=result["ids"])
+                            logger.info(f"Cleared {len(result['ids'])} documents from {collection_name}")
+                        else:
+                            logger.info(f"Collection {collection_name} was already empty")
+                except Exception as e:
+                    logger.error(f"Error clearing collection {collection_name}: {str(e)}")
+
+        except Exception as e:
+            logger.error(f"Error clearing collections: {str(e)}")
 
     async def _remove_document_from_collection(self, collection_name: str, document_id: str):
         """Remove existing document from collection"""

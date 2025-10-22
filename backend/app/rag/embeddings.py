@@ -27,13 +27,16 @@ class EmbeddingService:
         """Initialize the embedding model based on provider"""
         try:
             if self.provider == "openai":
-                if not settings.OPENAI_API_KEY:
-                    raise ValueError("OpenAI API key is required for OpenAI embeddings")
+                if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY == "your_openai_api_key_here" or len(settings.OPENAI_API_KEY.strip()) <= 10:
+                    raise ValueError("Valid OpenAI API key is required for OpenAI embeddings")
                 openai.api_key = settings.OPENAI_API_KEY
                 # OpenAI embeddings are stateless, no model initialization needed
                 logger.info(f"Using OpenAI embeddings with model: {self.model_name}")
 
             elif self.provider == "sentence_transformers":
+                # Use a proper SentenceTransformer model
+                if self.model_name.startswith("text-embedding") or self.model_name == "text-embedding-ada-002":
+                    self.model_name = "all-MiniLM-L6-v2"
                 self._model = SentenceTransformer(self.model_name)
                 logger.info(f"Loaded SentenceTransformer model: {self.model_name}")
 
@@ -198,7 +201,7 @@ class EmbeddingService:
             logger.error(f"Error calculating similarity: {str(e)}")
             return 0.0
 
-    def batch_embed(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
+    async def batch_embed(self, texts: List[str], batch_size: int = 32) -> List[List[float]]:
         """
         Embed texts in batches for efficiency
 

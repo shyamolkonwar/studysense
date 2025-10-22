@@ -4,6 +4,7 @@ import logging
 from dataclasses import dataclass
 import yaml
 from pathlib import Path
+import uuid
 
 logger = logging.getLogger(__name__)
 
@@ -302,10 +303,12 @@ class ContentChunker:
                     overlap_text = '\n\n'.join(overlap_paragraphs)
                     overlapped_text = overlap_text + '\n\n' + chunk.text
 
+                    # Use UUID for unique overlapped chunk ID
+                    overlap_unique_id = str(uuid.uuid4())[:8]
                     overlapped_chunk = DocumentChunk(
                         text=overlapped_text,
                         metadata=chunk.metadata.copy(),
-                        chunk_id=f"{chunk.metadata.get('document_id', 'doc')}_chunk_{i}_overlapped",
+                        chunk_id=f"{chunk.metadata.get('document_id', 'doc')}_chunk_{i}_overlapped_{overlap_unique_id}",
                         source_file=chunk.source_file,
                         start_char=max(0, chunk.start_char - overlap_chars),
                         end_char=chunk.end_char,
@@ -345,10 +348,14 @@ class ContentChunker:
             "char_count": len(text)
         })
 
+        # Use UUID to ensure unique chunk IDs
+        unique_id = str(uuid.uuid4())[:8]
+        chunk_id = f"{metadata.get('document_id', 'doc')}_chunk_{chunk_number}_{unique_id}"
+
         return DocumentChunk(
             text=text,
             metadata=chunk_metadata,
-            chunk_id=f"{metadata.get('document_id', 'doc')}_chunk_{chunk_number}",
+            chunk_id=chunk_id,
             source_file=metadata.get("source_file", "unknown"),
             start_char=start_char,
             end_char=end_char,
@@ -380,12 +387,14 @@ class ContentChunker:
                 "chunking_strategy": "semantic_with_structure"
             }
 
-            # Add frontmatter metadata
-            base_metadata.update(frontmatter_metadata)
+            # Add frontmatter metadata (filter out non-ChromaDB compatible types)
+            filtered_frontmatter = self._filter_metadata_for_chromadb(frontmatter_metadata)
+            base_metadata.update(filtered_frontmatter)
 
             # Add additional metadata if provided
             if additional_metadata:
-                base_metadata.update(additional_metadata)
+                filtered_additional = self._filter_metadata_for_chromadb(additional_metadata)
+                base_metadata.update(filtered_additional)
 
             # Split by structure first
             structured_sections = self.split_by_structure(body_content, base_metadata)
@@ -469,6 +478,38 @@ class ContentChunker:
         }
 
         return stats
+
+    def _filter_metadata_for_chromadb(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Filter metadata to only include ChromaDB-compatible types
+
+        Args:
+            metadata: Raw metadata dictionary
+
+        Returns:
+            Filtered metadata with only str, int, float, bool, or None values
+        """
+        filtered = {}
+
+        for key, value in metadata.items():
+            if isinstance(value, (str, int, float, bool)) or value is None:
+                filtered[key] = value
+            elif isinstance(value, list):
+                # Convert lists to comma-separated strings
+                filtered[key] = ", ".join(str(item) for item in value)
+            elif isinstance(value, dict):
+                # Convert dicts to JSON string (though ChromaDB might not support this)
+                import json
+                try:
+                    filtered[key] = json.dumps(value)
+                except:
+                    # Skip if can't serialize
+                    continue
+            else:
+                # Convert other types to string
+                filtered[key] = str(value)
+
+        return filtered
 
 # Global chunker instance
 content_chunker = ContentChunker()
