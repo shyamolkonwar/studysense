@@ -4,11 +4,16 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 import os
 
-# Database configuration
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:password@localhost:5432/studysense"
-)
+# Import settings after defining DATABASE_URL to avoid circular imports
+try:
+    from app.core.config import settings
+    DATABASE_URL = settings.DATABASE_URL
+except ImportError:
+    # Fallback for when config is not available (e.g., during setup)
+    DATABASE_URL = os.getenv(
+        "DATABASE_URL",
+        "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+    )
 
 # Create engine
 engine = create_engine(

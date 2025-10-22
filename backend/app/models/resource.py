@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Boolean, JSON, Enum
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Boolean, JSON, Enum, Float
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -116,4 +116,4 @@ class Resource(Base):
     status = Column(String(20), default="active", nullable=False)  # active/inactive/archived
     moderated = Column(Boolean, default=False, nullable=False)
     moderation_notes = Column(Text, nullable=True)
-    compliance_flags = Column(JSON, nullable_TRUE)  # Any compliance concerns
+    compliance_flags = Column(JSON, nullable=True)  # Any compliance concerns

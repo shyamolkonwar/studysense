@@ -9,17 +9,21 @@ logger = logging.getLogger(__name__)
 
 class ChromaClient:
     def __init__(self):
-        self.client = chromadb.PersistentClient(
-            path=settings.CHROMA_PERSIST_DIRECTORY,
-            settings=ChromaSettings(
-                anonymized_telemetry=False,
-                allow_reset=True
+        # Connect to ChromaDB server
+        self.client = chromadb.HttpClient(host="localhost", port=8000)
+
+        # Use OpenAI embedding function if API key is available, otherwise use SentenceTransformer
+        if settings.OPENAI_API_KEY:
+            self.embedding_function = embedding_functions.OpenAIEmbeddingFunction(
+                api_key=settings.OPENAI_API_KEY,
+                model_name=settings.EMBEDDING_MODEL
             )
-        )
-        self.embedding_function = embedding_functions.OpenAIEmbeddingFunction(
-            api_key=settings.OPENAI_API_KEY,
-            model_name=settings.EMBEDDING_MODEL
-        )
+        else:
+            # Use SentenceTransformer embedding function for development/testing
+            self.embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name="all-MiniLM-L6-v2"
+            )
+            logger.warning("No OpenAI API key provided, using SentenceTransformer embedding function. This is not recommended for production.")
 
         # Initialize collections
         self._init_collections()
@@ -33,7 +37,7 @@ class ChromaClient:
             metadata={
                 "description": "Global knowledge base with mental health resources",
                 "type": "knowledge_base",
-                "content_types": ["articles", "resources", "guidelines"],
+                "content_types": "articles,resources,guidelines",
                 "language": "en",
                 "version": "1.0"
             }
@@ -45,7 +49,7 @@ class ChromaClient:
             metadata={
                 "description": "Institution-specific resources and services",
                 "type": "campus_resources",
-                "content_types": ["counseling", "support_groups", "campus_services"],
+                "content_types": "counseling,support_groups,campus_services",
                 "language": "en",
                 "version": "1.0"
             }
@@ -57,7 +61,7 @@ class ChromaClient:
             metadata={
                 "description": "User-specific context and behavioral patterns",
                 "type": "user_context",
-                "content_types": ["messages", "activities", "conversations"],
+                "content_types": "messages,activities,conversations",
                 "access_level": "private",
                 "retention_days": str(settings.MESSAGE_RETENTION_DAYS),
                 "version": "1.0"
@@ -70,7 +74,7 @@ class ChromaClient:
             metadata={
                 "description": "Conversation history and context for chat continuity",
                 "type": "conversation_context",
-                "content_types": ["chat_messages", "recommendations", "feedback"],
+                "content_types": "chat_messages,recommendations,feedback",
                 "access_level": "private",
                 "retention_days": str(settings.MESSAGE_RETENTION_DAYS),
                 "version": "1.0"
@@ -83,7 +87,7 @@ class ChromaClient:
             metadata={
                 "description": "Anonymized risk patterns and markers",
                 "type": "risk_patterns",
-                "content_types": ["risk_markers", "anomalies", "patterns"],
+                "content_types": "risk_markers,anomalies,patterns",
                 "access_level": "research",
                 "anonymized": "true",
                 "version": "1.0"

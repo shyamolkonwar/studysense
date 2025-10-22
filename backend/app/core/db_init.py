@@ -102,6 +102,26 @@ def insert_initial_data():
     """Insert initial system data"""
     try:
         with engine.connect() as conn:
+            # Create additional tables if they don't exist
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS legal_versions (
+                    version VARCHAR(20) PRIMARY KEY,
+                    effective_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                    privacy_policy_url TEXT,
+                    terms_url TEXT
+                );
+            """))
+
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS notification_templates (
+                    id SERIAL PRIMARY KEY,
+                    type VARCHAR(100) UNIQUE NOT NULL,
+                    template TEXT NOT NULL,
+                    default_enabled BOOLEAN DEFAULT true,
+                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                );
+            """))
+
             # Insert legal versions for consent
             conn.execute(text("""
                 INSERT INTO legal_versions (version, effective_date, privacy_policy_url, terms_url)
